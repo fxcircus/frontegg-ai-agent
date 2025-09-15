@@ -70,14 +70,14 @@ Create a `.env` file in the project root (you can copy from `.env.example`). Fil
 
 ```env title=".env"
 # Shared backend and frontend vars
-VITE_FRONTEGG_CLIENT_ID=YOUR_FRONTEGG_ENV_CLIENT_ID # Frontegg Client ID (step 1)
-VITE_FRONTEGG_AGENT_ID=YOUR_FRONTEGG_AGENT_ID     # Frontegg Agent ID (step 2)
+VITE_FRONTEGG_AGENT_ID=YOUR_FRONTEGG_AGENT_ID     # ID from "Agents" ➜ YourAgentName
+VITE_FRONTEGG_CLIENT_ID=YOUR_FRONTEGG_ENV_CLIENT_ID # Client ID from "Keys & Domains"
 
 # Backend only vars
-FRONTEGG_CLIENT_SECRET=YOUR_FRONTEGG_ENV_API_KEY # Frontegg Application Secret Key (step 1)
+FRONTEGG_CLIENT_SECRET=YOUR_FRONTEGG_ENV_API_KEY # "API Key" from "Keys & Domains"
 OPENAI_API_KEY=YOUR_OPENAI_API_KEY                # OpenAI API Key
 
 # Frontend only vars
 VITE_API_BASE_URL=http://localhost:3001           # Your backend API URL
-VITE_FRONTEGG_BASE_URL=YOUR_FRONTEGG_BASE_URL    # Frontegg Base URL (step 1)
+VITE_FRONTEGG_BASE_URL=YOUR_FRONTEGG_BASE_URL    # Frontegg Base URL from "Applications" ➜ yourAppName
 ```

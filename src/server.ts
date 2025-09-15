@@ -20,6 +20,9 @@ let agent: LLMAgent | null = null;
 let isInitializing = false;
 let initializationError: Error | null = null;
 
+// Define timeout duration for agent initialization (120 seconds)
+const INITIALIZATION_TIMEOUT = 120000;
+
 async function getAgentInstance() {
 	if (agent) {
 		return agent;
@@ -44,10 +47,24 @@ async function getAgentInstance() {
 	isInitializing = true;
 	initializationError = null;
 	logger.info('Initializing agent instance...');
+
+	// Create a promise that rejects after a timeout
+	const timeoutPromise = new Promise<LLMAgent>((_, reject) => {
+		setTimeout(() => {
+			reject(new Error(`Agent initialization timed out after ${INITIALIZATION_TIMEOUT/1000} seconds`));
+		}, INITIALIZATION_TIMEOUT);
+	});
+
 	try {
 		const newAgent = createLLMAgent();
-		await newAgent.initializeFronteggAIAgentsClient();
-		agent = newAgent; // Assign only after successful initialization
+		
+		// Race between initialization and timeout
+		const initialized = await Promise.race([
+			newAgent.initializeFronteggAIAgentsClient().then(() => newAgent),
+			timeoutPromise
+		]);
+		
+		agent = initialized; // Assign only after successful initialization
 		logger.info('Agent instance initialized successfully.');
 		isInitializing = false;
 		return agent;
@@ -69,17 +86,42 @@ app.post('/api/agent', async (req: Request, res: Response) => {
 		}
 		const userJwt = req.headers['authorization'] as string;
 
-		const agentInstance = await getAgentInstance(); 
+		// Check if userJwt is provided
+		if (!userJwt) {
+			return res.status(401).json({ error: 'Authorization header is required' });
+		}
 
-		logger.info('Processing request with agent...');
-		const result = await agentInstance.processRequest(message,userJwt);
-		logger.info('Agent processing complete.');
+		try {
+			const agentInstance = await getAgentInstance(); 
+			logger.info('Processing request with agent...');
+			const result = await agentInstance.processRequest(message, userJwt);
+			logger.info('Agent processing complete.');
 
-		// Extract the text content from the response
-		const responseText =
-			typeof result === 'string' ? result : result?.output || result?.content || JSON.stringify(result);
+			// Extract the text content from the response
+			const responseText =
+				typeof result === 'string' ? result : result?.output || result?.content || JSON.stringify(result);
 
-		res.json({ response: responseText });
+			res.json({ response: responseText });
+		} catch (error: unknown) {
+			// Handle agent-specific errors
+			logger.error('Agent error:', error);
+			
+			// Special handling for timeout errors
+			const agentError = error as Error;
+			if (agentError.message && agentError.message.includes('timed out')) {
+				return res.status(504).json({ 
+					error: 'Gateway timeout',
+					message: 'The request to Frontegg API timed out. Please try again later.',
+					details: agentError.message
+				});
+			}
+			
+			// Handle other agent errors
+			const errorMessage = agentError instanceof Error ? agentError.message : 'Failed to process with agent';
+			const statusCode = agentError instanceof Error && (agentError as any).status ? (agentError as any).status : 500;
+			
+			res.status(statusCode).json({ error: errorMessage });
+		}
 	} catch (error) {
 		logger.error('Error processing message in /api/agent:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Failed to process message';
@@ -100,6 +142,15 @@ app.post('/api/agent', async (req: Request, res: Response) => {
 // Basic root route
 app.get('/', (req: Request, res: Response) => {
 	res.send('AI Agent Backend Server is running!');
+});
+
+// Health check endpoint
+app.get('/health', (req: Request, res: Response) => {
+	res.json({ 
+		status: 'ok',
+		agent: agent ? 'initialized' : (isInitializing ? 'initializing' : 'not initialized'),
+		timestamp: new Date().toISOString()
+	});
 });
 
 // Start the server

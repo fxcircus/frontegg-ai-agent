@@ -19,7 +19,7 @@ export function AgentChat({ isAuthenticated }: AgentChatProps) {
     setMessages([
       { 
         role: 'assistant', 
-        content: `Hi ${user?.name || 'there'}! I'm Jenny, your Customer Commitment Lifecycle agent. How can I help you track feature commitments today?` 
+        content: `Hi ${user?.name || 'there'}! I'm Jenny, your AI agent. How can I help you today?` 
       }
     ]);
   }, []); // Only run once on mount

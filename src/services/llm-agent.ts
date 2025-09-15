@@ -57,18 +57,30 @@ Only use integrations the user has authorized. Be transparent about actions you 
 	 */
 	public async initializeFronteggAIAgentsClient(): Promise<boolean> {
 		try {
+			logger.info('Starting Frontegg AI Client initialization...');
+			// Add more detailed logging
+			logger.debug(`Using Frontegg configuration: 
+				Agent ID: ${process.env.VITE_FRONTEGG_AGENT_ID?.substring(0, 8)}...,
+				Client ID: ${process.env.VITE_FRONTEGG_CLIENT_ID?.substring(0, 8)}...,
+				Environment: EU`);
+			
 			this.fronteggAiClient = await FronteggAiClient.getInstance({
 				agentId: process.env.VITE_FRONTEGG_AGENT_ID!,
 				clientId: process.env.VITE_FRONTEGG_CLIENT_ID!,
 				clientSecret: process.env.FRONTEGG_CLIENT_SECRET!,
 				environment: Environment.EU,
 			});
+			logger.info('Frontegg AI Client initialized successfully');
 			return true;
 
 		} catch (error) {
 			logger.error(`Failed to initialize LLM Agent: ${(error as Error).message}`);
 			if (error instanceof Error && error.stack) {
 				logger.debug(`Stack trace: ${error.stack}`);
+			}
+			// Log more detailed error information
+			if (typeof error === 'object' && error !== null) {
+				logger.error('Error details:', JSON.stringify(error));
 			}
 			return false;
 		}
@@ -139,9 +151,20 @@ Only use integrations the user has authorized. Be transparent about actions you 
 			this.conversationHistory.push({ role: 'human', content: request });
 
 			// Recreate the agent with updated user context,tools and history
+			logger.info('Setting user context by JWT...');
 			await this.fronteggAiClient.setUserContextByJWT(userJwt);
-			const tools = await this.fronteggAiClient.getToolsAsLangchainTools();
-			await this.createAgent(tools);
+			
+			logger.info('Getting tools as Langchain tools...');
+			try {
+				const tools = await this.fronteggAiClient.getToolsAsLangchainTools();
+				logger.info(`Successfully retrieved ${tools.length} Langchain tools`);
+				await this.createAgent(tools);
+			} catch (toolError) {
+				logger.error('Failed to get tools as Langchain tools', toolError);
+				logger.debug('Attempting to continue with empty tools array');
+				// Continue with empty tools array as fallback
+				await this.createAgent([]);
+			}
 
 			// Invoke the agent with the request
 			const result = await this.agent?.invoke({
