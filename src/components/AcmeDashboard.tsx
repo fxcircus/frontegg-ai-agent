@@ -105,7 +105,7 @@ export function AcmeDashboard() {
         </h3>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
           {announcements.map((announcement, index) => (
-            <div key={index} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+            <div key={index} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <div className="flex items-start space-x-3">
                 <span className="text-xl mt-0.5">{getAnnouncementIcon(announcement.type)}</span>
                 <div className="flex-1">
